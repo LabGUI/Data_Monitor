@@ -19,7 +19,7 @@ import json
 sys.stdout = stdout = Printerceptor()
 if sys.platform == 'win32':
     import ctypes
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('bluefors.monitor.app.1')
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('labgui.monitor.app.1')
 import logger
 
 logging = logger.Logger(__file__)
@@ -69,10 +69,10 @@ class MainApplication(QtWidgets.QMainWindow):
 
 
         # Add icon
-        self.setWindowIcon(QtGui.QIcon('Resources/BlueforsIcon.ico'))
-        self.setWindowTitle("Bluefors Fridge Monitor")
+        self.setWindowIcon(QtGui.QIcon('Resources/LabGUI.png'))
+        self.setWindowTitle("LabGUI Data Monitor")
         if DEBUG_MODE:
-            self.setWindowTitle("Bluefors Fridge Monitor (DEBUG)")
+            self.setWindowTitle("LabGUI Data Monitor (DEBUG)")
 
         # TODO: Add resizing event captures!
         self.monitorsWidget.widgetResize.connect(self.widgetResize)

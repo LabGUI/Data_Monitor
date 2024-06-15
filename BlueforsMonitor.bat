@@ -1,2 +1,0 @@
-python BlueforsMonitor.py
-pause
