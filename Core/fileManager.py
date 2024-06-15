@@ -69,6 +69,49 @@ class LogChannel:
     def __del__(self):
         self.close()
 
+class DummyFileManager(QThread):
+    processedChanges = QtCore.pyqtSignal(dict)
+    allData = QtCore.pyqtSignal(dict)
+    def __init__(self, log_path=LOG_PATH):
+        super().__init__()
+        self.logChannels = {}
+        self.overseer = Overseer()
+        self.overseer.changeSignal.connect(self.changeDetected)
+        self.latest_log_files = {} #load_all_possible_log_files(log_path)
+
+        self.last_emitted_changes = {}
+        self.most_recent_changes = {}
+
+        self.changes_read = {}
+
+    def emitData(self):
+        self.allData.emit(self.dumpData())
+
+    def dumpData(self):
+        return {}
+    def run(self):
+        self.overseer.start()
+        while True:
+            logging.debug("Looping")
+            time.sleep(CHANGE_PROCESS_CHECK)
+
+    def stop(self):
+        self.overseer.stop()
+        self.overseer.join()
+
+    def __del__(self):
+        pas
+
+    def changeDetected(self, change, channel, date):
+        logging.debug("Change detected")
+
+
+    def currentStatus(self):
+        return {}
+
+    def mostRecentChanges(self):
+        return self.most_recent_changes
+
 
 class FileManager(QThread):
     processedChanges = QtCore.pyqtSignal(dict)

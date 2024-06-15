@@ -12,6 +12,7 @@ from GUI.collapsibleBox import CollapsibleBox
 from GUI.monitorWidget import MonitorWidget
 from GUI.monitorsWidget import MonitorsWidget
 from GUI.activeMonitorsWidget import ActiveMonitorsWidget
+from GUI.dataSelectionWidget import DataSelectionWidget
 
 from GUI.consoleWidget import Printerceptor, ConsoleWidget
 import sys
@@ -37,10 +38,11 @@ class MainApplication(QtWidgets.QMainWindow):
         self.consoleWidget = ConsoleWidget()
         stdout.printToConsole.connect(self.consoleWidget.printToConsole)
 
-        self.fileManager = FileManager(log_path)
+        self.fileManager = DummyFileManager(log_path)
         self.monitorsWidget = MonitorsWidget()
         self.monitorManager = MonitorManager(self)
         self.activeMonitorWidget = ActiveMonitorsWidget()
+        self.dataSelectionWidget = DataSelectionWidget()
 
 
         self.mailer = Mailer(RECIPIENTS)
@@ -100,6 +102,12 @@ class MainApplication(QtWidgets.QMainWindow):
 
     def init_ui(self):
         ########### Create docks
+        # dataSelectionWidget
+        self.dock_dataSelectionWidget = QtWidgets.QDockWidget('Data File Selection')
+        self.dock_dataSelectionWidget.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        #self.dock_dataSelectionWidget.setWidget(self.dataSelectionWidget)
+        self.dock_dataSelectionWidget.setContentsMargins(0, 0, 0, 0)
+
         # monitorsWidget
         self.dock_monitorsWidget = QtWidgets.QDockWidget('Monitors')
         self.dock_monitorsWidget.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable |
@@ -122,7 +130,10 @@ class MainApplication(QtWidgets.QMainWindow):
         self.dock_activeMonitorWidget.setWidget(self.activeMonitorWidget)
         self.dock_activeMonitorWidget.setContentsMargins(0,0,0,0)
 
-
+        #self.addDockWidget(QtCore.Qt.DockWidgetArea.TopDockWidgetArea, self.dock_dataSelectionWidget)
+        self.toolbar_dataSelectionWidget = QtWidgets.QToolBar()
+        self.toolbar_dataSelectionWidget.addWidget(self.dataSelectionWidget)
+        self.addToolBar(self.toolbar_dataSelectionWidget)
         # Add docks to main window
         if SPLIT_MONITOR_WIDGETS:
             # Monitor top left, Active monitor top right, Console bottom

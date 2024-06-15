@@ -27,14 +27,6 @@ with open(os.path.join(ROOT_DIR, CONFIG_FILE), 'r') as f:
 VERBOSE = True  # TODO: implement this stuff
 DEBUG_MODE = False
 
-SUBCHANNEL_DELIMITER = ':'
-
-KV_CHANNELS = ['heaters', 'Status']
-ERROR_CHANNEL = ['Errors']
-MAXIGAUGE_CHANNEL = ['maxigauge']
-VALVECONTROL_CHANNEL = ['Channels']
-
-CHANNELS_WITH_UNDERSCORE = ['heaters', 'Status']
 
 CHANNEL_BLACKLIST = [f'CH{d+1} T' for d in range(7,16)] + [f'CH{d+1} R' for d in range(7,16)] +[f'CH{d+1} P' for d in range(7,16)]
 
