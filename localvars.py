@@ -1,6 +1,6 @@
 CONFIG_FILE = 'config'
 
-LOG_PATH = None
+DATA_PATH = None
 CALIBRATION_PATH = None
 RECIPIENTS = None
 SENDER = None
@@ -13,7 +13,7 @@ with open(os.path.join(ROOT_DIR, CONFIG_FILE), 'r') as f:
     lines = f.readlines()
     # Set LOG_PATH
     try:
-        LOG_PATH = [l.strip(' \n\t') for l in lines if 'LOG_PATH' in l][0].split('LOG_PATH=')[1]
+        DATA_PATH = [l.strip(' \n\t') for l in lines if 'LOG_PATH' in l][0].split('LOG_PATH=')[1]
         RECIPIENTS = [l.strip(' \n\t') for l in lines if 'RECIPIENTS' in l][0].split('RECIPIENTS=')[1].split(',')
         SENDER = [l.strip(' \n\t') for l in lines if 'SENDER' in l][0].split('SENDER=')[1]
         PASSWORD = [l.strip(' \n\t') for l in lines if 'PASSWORD' in l][0].split('PASSWORD=')[1]
@@ -27,6 +27,7 @@ with open(os.path.join(ROOT_DIR, CONFIG_FILE), 'r') as f:
 VERBOSE = True  # TODO: implement this stuff
 DEBUG_MODE = False
 
+DATAFILE_DELIMITER = '  '
 
 CHANNEL_BLACKLIST = [f'CH{d+1} T' for d in range(7,16)] + [f'CH{d+1} R' for d in range(7,16)] +[f'CH{d+1} P' for d in range(7,16)]
 

@@ -40,7 +40,7 @@ class Logger:
         # DO formatting
         self.handler_stderr = loglib.StreamHandler(sys.stderr)
         self.handler_stdout = loglib.StreamHandler(sys.stdout)
-        self.handler_stderr.setLevel(loglib.INFO) # TODO: Move this to localvars somehow
+        self.handler_stderr.setLevel(loglib.DEBUG) # TODO: Move this to localvars somehow
         self.handler_stdout.setLevel(loglib.ERROR) # TODO: Move this to localvars somehow
 
 
@@ -54,6 +54,8 @@ class Logger:
 
         self.logger.addHandler(self.handler_stderr)
         self.logger.addHandler(self.handler_stdout)
+
+        self.logger.setLevel(loglib.DEBUG)
 
     def __getattr__(self, item):
         try:

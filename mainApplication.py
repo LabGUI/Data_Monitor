@@ -32,7 +32,7 @@ class MainApplication(QtWidgets.QMainWindow):
     monitorSignal = QtCore.pyqtSignal(dict)
     monitorChange = QtCore.pyqtSignal(dict)
     widgetResize = QtCore.pyqtSignal()
-    def __init__(self, log_path=LOG_PATH):
+    def __init__(self, log_path=DATA_PATH):
         super().__init__()
         # Initialize the console widget and connect stdout to console to capture init prints
         self.consoleWidget = ConsoleWidget()
@@ -43,6 +43,8 @@ class MainApplication(QtWidgets.QMainWindow):
         self.monitorManager = MonitorManager(self)
         self.activeMonitorWidget = ActiveMonitorsWidget()
         self.dataSelectionWidget = DataSelectionWidget()
+        self.dataSelectionWidget.datafileSelected.connect(self.fileManager.dataFileSelected)
+        self.dataSelectionWidget.datafileSelected.connect(self.dataFileSelected)
 
 
         self.mailer = Mailer(RECIPIENTS)
@@ -166,6 +168,7 @@ class MainApplication(QtWidgets.QMainWindow):
         self.fileManager.start()
 
     def checkMonitors(self, obj):
+        print("Working: ", obj)
         vals = self.monitorManager.checkMonitors(obj)
         triggered = (self.monitorManager.WhatMonitorsTriggered(vals))
         triggered_data = self.monitorManager.triggeredMonitorInfo(obj, triggered)
@@ -197,6 +200,14 @@ class MainApplication(QtWidgets.QMainWindow):
             logging.info(f"Monitor {obj['monitor']} deactivated, (channel={obj['channel']}, subchannel={obj['subchannel']}, type={obj['type']}, values={obj['values']}, variables={obj['variables']})")
             print(f"Monitor {obj['monitor']} deactivated")
 
+    def dataFileSelected(self, change_dict):
+        self.fileManager.setDataFile(change_dict['path'])
+        print(change_dict)
+
+        # TODO: do the similar one
+
+    def dataFileChanged(self, change_dict):
+        pass
 
     def resizeWidgets(self):
         #print("resizeWidgets")

@@ -2,34 +2,68 @@
 from localvars import *
 import os
 from datetime import datetime
+import logger
+logging = logger.Logger(__file__)
 
-class LogFile:
-    def __init__(self, channel, date, data, labels, log_path = LOG_PATH):
-        if channel in CHANNELS_WITH_UNDERSCORE:
-            self.fname = f'{channel}_{date}.log'
-        else:
-            self.fname = f'{channel} {date}.log'
-
+class DataFile:
+    def __init__(self, name, data, start_time, channels, instruments, parameters, preamble, data_path):
+        self.name = name
         self.data = data
-        self.labels = labels
-        print(self.data)
+        self.start_time = start_time
+        self.channels = channels
+        self.instruments = instruments
+        self.parameters = parameters
+        self.preamble = preamble
+
         self.times = list(sorted(self.data.keys()))
 
-        self.log_path = log_path
+        self.labels = [(ch,instr,param) for ch,instr,param in zip(channels, instruments, parameters)]
+
+        self.data_path = data_path
 
     @classmethod
-    def FromFile(cls, channel, date, log_path = LOG_PATH):
-        data, labels = read_log_file(channel, date, log_path=log_path)
-        return cls(channel, date, data, labels, log_path=log_path)
+    def FromFile(cls, path):
+        if not os.path.exists(path) or not os.path.isfile(path):
+            return None
+        name = path.split(os.sep)[-1]
+        data, start_time, channels, instruments, parameters, preamble = read_data_file(path)
+        return cls(name,data, start_time, channels, instruments, parameters, preamble, data_path=os.path.dirname(path))
 
     def getLastLine(self):
         if len(self.times) > 0:
             return {self.times[-1]:self.data[self.times[-1]]}, self.labels
 
 
+def read_data_file(path):
+    """
+    They look like this:
+    # Description: SdH local measurements of CBM301
+    #Measurement: 4pt conductance
+    #At 1mT B field offset
+    #
+    #PreAmp used with typical settings
+    #Voltage divider 100kOhm and 100Ohm from LI1 to D, measuring with amplifier B to K, then M split between 1k resistor grounded and LI2 (gpib7)
+    #
+    #Iterator = Step for each field sweep iteration and hold time
+    #C'dt(s)', 'X_CBM301(V)', 'Y_CBM301(V)', 'iX_CBM301(V)', 'iY_CBM301(V)', 'Field(T)', 'Step(#)'
+    #I'TIME[].dt', 'SR830[GPIB0::11::INSTR].X', 'SR830[GPIB0::11::INSTR].Y', 'SR830[GPIB0::7::INSTR].X', 'SR830[GPIB0::7::INSTR].Y', 'IPS120[GPIB0::25::INSTR].Field', 'ITERATOR[DUMMY].Step'
+    #P'dt', 'X', 'Y', 'X', 'Y', 'Field', 'Step'
+    #T'1718477385.8619533'
+    data  data  data  data  data  data
+    data  data  data  data  data  data
+    """
+
+    with open(path, 'r') as f:
+        flines = [l.strip(' \t\r\n') for l in f.readlines() if l[-1] == '\n']
+
+    datalines, comments = process_data_file_lines(flines)
+    data, start_time, channels, instruments, parameters, preamble = process_data_file_rows(datalines, comments) # Always want this form
+    return data, start_time, channels, instruments, parameters, preamble
 
 
-def process_log_file_lines(lines, channel, date):
+
+
+def process_data_file_lines(lines):
     """
     process raw lines from the file into an array with a time stamp and converted values (int/float/etc)
 
@@ -39,24 +73,25 @@ def process_log_file_lines(lines, channel, date):
     :return: array of lines in proper formats
     """
     processed = []
+    comments = []
+    datalines = []
     for line in lines:
+        if line[0] == '#':
+            comments.append(line[1:])
+        else:
+            datalines.append(line)
+
+    for line in datalines:
         try:
-            t = datetime.strptime(f'{line[0]} {line[1]}', '%d-%m-%y %H:%M:%S').timestamp()
-            values = [t]
-            for val in line[2:]:
-                try:
-                    try:
-                        values.append(int(val))
-                    except ValueError:
-                        values.append(float(val))
-                except ValueError:
-                    values.append(val)
+            values = line.strip('\n').split(DATAFILE_DELIMITER)
+            values = [float(x) for x in values]
             processed.append(values)
         except ValueError as e:
-            print(f"Read error {date}/{channel}: {str(e)}")
-    return processed
+            logging.error("Read error occured: "+str(e))
 
-def process_log_file_rows(processed, channel, date):
+    return processed, comments
+
+def process_data_file_rows(processed, comments):
     """
 
     :param channel: log file channel
@@ -64,68 +99,51 @@ def process_log_file_rows(processed, channel, date):
     :return: {} processed rows
     """
     data = {}
-    labels = []
-    if channel in MAXIGAUGE_CHANNEL:
-        for row in processed:
-            # each channel has 6 columns, 2 are strings describing the channel/gauge and 4 are values and status
-            # data[row[0]] = {(a + b).strip(' '): [c, d, e, f] for a, b, c, d, e, f in zip(*[row[(i + 1)::6] for i in range(6)])} <= dont need status just value
-            data[row[0]] = {(a + b).strip(' '): d for a, b, _, d, _, _ in zip(*[row[(i + 1)::6] for i in range(6)])}
-        labels = list(data[row[0]].keys())
+    channels = []
+    instruments = []
+    parameters = []
+    preamble = ""
+    start_time = None
 
-    elif channel in ERROR_CHANNEL:
-        for row in processed:
-            time_dt = datetime.fromtimestamp(row[0])
-            time_str = time_dt.strftime('%d-%m-%y,%H:%M:%S')
-            if time_str in ",".join(row[1:]):  # We have two errors
-                errors = [x.strip(',').split(",") for x in (",".join(row[1:])).split(time_str)]
-                #data[row[0]] = [{error[0]:error[1:]} for error in errors]
-                data[row[0]] = ", ".join([f"{error[0]}={' '.join(error[1:])}" for error in errors])
-            else:
-                #data[row[0]] = [{row[1]: ",".join(row[2:])}]
-                data[row[0]] = f"{row[1]}={' '.join(row[2:])}" #[{row[1]: ",".join(row[2:])}]
-
-    elif channel in KV_CHANNELS:
-        for row in processed:
-            data[row[0]] = {k: v for k, v in zip(row[1::2], row[2::2])}
-        labels = list(data[row[0]].keys())
-
-    elif channel in VALVECONTROL_CHANNEL: # has weird first entry which I have no idea what it represents
-        for row in processed:
-            data[row[0]] = {k: v for k, v in zip(row[2::2], row[3::2])}
-            data[row[0]]['void'] = row[1] # Phantom value
-        labels = list(data[row[0]].keys())
+    for comment in reversed(comments):
+        if comment[0:2] == "T'" and comment[-1] == "'" and start_time is None:
+            start_time = float(comment[1:].strip("'"))
+        elif comment[0:2] == "C'" and comment[-1] == "'" and len(channels) == 0:
+            channels = [ch.strip("' ") for ch in comment[1:].split(',')]
+        elif comment[0:2] == "P'" and comment[-1] == "'" and len(parameters) == 0:
+            parameters = [ch.strip("' ") for ch in comment[1:].split(',')]
+        elif comment[0:2] == "I'" and comment[-1] == "'" and len(instruments) == 0:
+            instruments = [ch.strip("' ") for ch in comment[1:].split(',')]
+        else:
+            preamble = comment.strip(' \n') + f"\n{preamble}"
 
 
-    else: # Just a normal log file with a date and a value
-        for row in processed:
-            data[row[0]] = row[1]
-            if len(row) > 2:
-                print(f"Warning, extra value found in {date}/{channel}, omitting")
-            labels = ['value']
+    if start_time is None or len(channels) == 0 or len(instruments) == 0 or len(parameters) == 0:
+        logging.error("Invalid datafile found, returning nothing")
+        return None, None, None, None, None, None
+    try:
+        time_idx = [i.split('.')[0] for i in instruments].index('TIME[]') # This is the time instrument
+    except ValueError:
+        time_idx = None
+        logging.warning("Found datafile without time idx, using iterator instead")
 
-    return data, labels
+    for i,datarow in enumerate(processed):
+        t = i
+        if time_idx:
+            t = datarow[time_idx]
+            if t < start_time: # This is the case when using dt, so we need to add to get current time
+                t = t + start_time
+
+        row_obj = {
+            (ch,instr,param):val
+            for ch,instr,param,val in zip(channels, instruments, parameters, datarow)
+        }
+        data[t] = row_obj
+
+    return data, start_time, channels, instruments, parameters, preamble
 
 
-
-def read_log_file(channel, date, log_path = LOG_PATH):
-    suffix = f'{date}.log'
-
-    if channel in CHANNELS_WITH_UNDERSCORE:
-        fname = f'{channel}_{date}.log'
-    else:
-        fname = f'{channel} {date}.log'
-
-
-    with open(os.path.join(log_path, date, fname), 'r') as f:
-        flines = [l.strip(' \t\r\n').split(',') for l in f.readlines() if l[-1] == '\n']
-
-    processed = process_log_file_lines(flines, channel=channel, date=date)
-
-
-    # We need to check what type of file it is
-    return process_log_file_rows(processed, channel=channel, date=date)
-
-def get_last_entry(data, labels):
+def get_last_entry(data):
     """
     Determines last entry from data/labels format
     """
@@ -135,8 +153,8 @@ def get_last_entry(data, labels):
 
 if __name__ == "__main__":
     from tabulate import tabulate
-    data, labels = read_log_file('Channels', '24-06-03')
-    lf = LogFile.FromFile('Channels', '24-06-03')
+    data, labels = read_data_file('Channels', '24-06-03')
+    lf = DataFile.FromFile('Channels', '24-06-03')
     #data, label = lf.getLastLine()
     array = [[k] + list(v.values()) for k,v in data.items()]
 

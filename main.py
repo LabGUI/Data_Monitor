@@ -27,8 +27,8 @@ def make_collapsibleBoxes(logChannels):
             print(logChannel.last_data)
 
 # should run in a thread https://stackoverflow.com/questions/25108321/how-to-return-value-from-function-running-by-qthread-and-queue
-class QueueLogFileWatchdog(LogFileWatchdog):
-    def __init__(self, date, log_path=LOG_PATH, queue=change_queue):
+class QueueDataFileWatchdog(DataFileWatchdog):
+    def __init__(self, date, log_path=DATA_PATH, queue=change_queue):
         super().__init__(date, log_path=log_path)
         self.queue = queue
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     current_date = datetime.now().strftime(DATE_FORMAT)
     overseer = Overseer(current_date)
 
-    logChannels = overseer.logFileWatchdog.logChannels
+    logChannels = overseer.dataFileWatchdog.logChannels
     collapsibles = make_collapsibleBoxes(logChannels)
 
     exit(0)

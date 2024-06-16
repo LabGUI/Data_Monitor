@@ -2,28 +2,45 @@ import os
 from localvars import *
 from datetime import datetime
 
-def load_calibration_dates(log_path = LOG_PATH, omit_empty_directories=True):
-    dircontents = os.listdir(log_path)
-    folders = []
-    for file in dircontents:
-        if os.path.isdir(os.path.join(log_path, file)):
-            try:
-                datetime.strptime(file, '%y-%m-%d')
-                folders.append(file)
-            except ValueError:
-                continue
-    folders = [f for f in folders if len(os.listdir(os.path.join(log_path, f))) or not omit_empty_directories]
-    return folders
 
-def load_all_possible_log_files(log_path = LOG_PATH):
-    folders = load_calibration_dates(log_path=log_path)
-    unique_files = []
-    last_logs = {}
-    for folder in folders:
-        suffix = f"{folder}.log"
-        files = [f for f in os.listdir(os.path.join(log_path, folder)) if f[-len(suffix):] == suffix]
-        files = [f[:-len(suffix)].strip('_ ') for f in files]
-        last_logs.update({f:folder for f in files})# if f in unique_files}) # add most recent ones to last logs dictionary
-        unique_files += [f for f in files if f not in unique_files]
 
-    return dict(sorted(last_logs.items(), key=lambda x:x[0]))
+def find_all_similar_data_files(data_file, data_path = DATA_PATH):
+    """
+    Given some data file (eg datafile.dat), will return all files in data_path that are named similarly, eg:
+    in folder: [datafile.dat, datafile_001.dat datafile_123.dat, anotherdatafile.dat, datafile_test.dat]
+    will return:
+        datafile.dat
+        datafile_001.dat
+        datafile_123.dat
+        datafile_test.dat
+
+    """
+    if os.sep in data_file:
+        data_path = os.path.dirname(data_file)
+        data_file = data_file.split(os.sep)[-1]
+    if data_path is None:
+        data_path = '.'
+
+    if not os.path.isfile(os.path.join(data_path, data_file)):
+        return []
+
+    data_files = load_all_possible_data_files(data_path)
+    # To find similar datafiles, the "similar" datafile will differ just by trailing numbers
+    ext = data_file.split('.')[-1]
+    if ext == data_file:
+        ext = ''
+
+    df_similar = data_file[:-(len(ext)+1)].rstrip("0123456789") if ext != '' else data_file.rstrip("0123456789")
+    return [f for f in data_files if f[:len(df_similar)] == df_similar]
+
+def load_all_possible_data_files(data_path = DATA_PATH):
+    return [f for f in os.listdir(data_path) if os.path.isfile(os.path.join(data_path, f))]
+
+
+if __name__ == "__main__":
+    data_path = r"C:\Users\zberks\OneDrive - McGill University\G2 Lab\Fridges\BlueFors Fridge\Data\24G1"
+    print(find_all_similar_data_files(
+        '150624_CBM301_Conductance_SdH_001.dat',
+        data_path
+    ))
+
